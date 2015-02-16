@@ -38,7 +38,11 @@ var updateClients = function(size, conn) {
 
 var server = http.createServer(function(req, res) {
 	var path = url.parse(req.url).pathname;
-	var size = url.parse(req.url).query;
+	try {
+		var size = url.match(/\d+$/)[0];
+	} catch(e) {
+		var size = 0;
+	}
 
 	if (path.match(/\/\d+/)) {
 		res.writeHead(200, {
@@ -66,7 +70,11 @@ var server = http.createServer(function(req, res) {
 				body += data;
 			});
 			req.on('end', function() {
-					size = url.parse(req.url).query;
+					try {
+						size = url.match(/\d+$/)[0];
+					} catch(e) {
+						size = 0;
+					}
 
 					var update = JSON.parse(body);
 					gridStates[update.size] = update.grid;
