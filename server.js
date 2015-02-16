@@ -1,6 +1,5 @@
 var http = require('http');
 var url = require('url');
-var httpProxy = require('http-proxy');
 var fs = require('fs');
 var grid = fs.readFileSync('grid.html');
 var gridJSON = fs.readFileSync('gridStates.json');
