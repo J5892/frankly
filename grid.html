@@ -82,8 +82,23 @@
 			} else {
 				var r = new XMLHttpRequest(); 
 				var url = 'http://' + document.location.hostname + ':' + document.location.port + '/json/' + size;
+				console.log(url);
 				r.open("POST", url, true);
 				r.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+				r.onreadystatechange = function () {
+					if (r.readyState != 4 || r.status != 200) {
+						console.log(r);
+						return;
+					}; 
+					console.log(r);
+					console.log('gogogo');
+					console.log(r.responseText);
+					var data = JSON.parse(r.responseText);
+					grid.populate(data);
+					if (path === 'poll') {
+						poll('poll');
+					}
+				};
 				r.send(json);
 			}
 		};

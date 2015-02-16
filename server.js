@@ -14,7 +14,6 @@ var gridConns = {};
 var updateClients = function(size, conn) {
 	var json = JSON.stringify(gridStates[size])
 	var connections = gridConns[size];
-	console.log(gridStates[size]);
 	for(c in connections) {
 		var connection = connections[c];
 		if (connection !== conn) {
@@ -37,16 +36,14 @@ var updateClients = function(size, conn) {
 };
 
 var server = http.createServer(function(req, res) {
-	var path = url.parse(req.url).pathname;
+	var path = url.parse(req.url).path;
 	try {
 		var size = path.match(/\d+$/)[0];
-		console.log("s" + size);
 	} catch(e) {
 		var size = 0;
 	}
 
 	if (path.match(/poll/)) {
-		console.log('poll');
 		if (req.method === "GET") {
 			console.log('request received');
 			if (responses[size]) {
@@ -57,7 +54,6 @@ var server = http.createServer(function(req, res) {
 			
 		}
 	} else if (path.match(/json/)) {
-		console.log('json');
 		if (req.method === "POST") {
 			var body = '';
 			req.on('data', function(data) {
@@ -66,7 +62,6 @@ var server = http.createServer(function(req, res) {
 			req.on('end', function() {
 					try {
 						size = url.match(/\d+$/)[0];
-						console.log("s" + size);
 					} catch(e) {
 						size = 0;
 					}
@@ -87,8 +82,7 @@ var server = http.createServer(function(req, res) {
 				res.end();
 			}
 		}
-	} else if (path.match(/\/\d+$/)) {
-		console.log('fuck');
+	} else if (path.match(/\d+$/)) {
 		res.writeHead(200, {
 			"Content-Type": 'text/html'
 		});
@@ -105,13 +99,11 @@ var socket = new ws({
 
 
 socket.on('request', function(r) {
-	console.log(r.origin);
 	var conn = r.accept('update-protocol', r.origin);
 	conns++;
 	var size;
 	var connections;
 	try {
-		console.log(r.resourceURL);
 		size = r.resourceURL.path.match(/\d+$/)[0];
 		
 		if (gridConns[size]) {
@@ -132,7 +124,6 @@ socket.on('request', function(r) {
 	conn.on('message', function(m) {
 		var data = m.utf8Data;
 		var update = JSON.parse(data);
-		console.log(update);
 		gridStates[update.size] = update.grid;
 		fs.writeFile('gridStates.json', JSON.stringify(gridStates));
 		updateClients(update.size, conn);
