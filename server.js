@@ -8,38 +8,91 @@ var gridStates = JSON.parse(gridJSON);
 
 var ws = require("websocket").server;
 var conns = 0;
+var responses = {};
+var gridConns = {};
+
+var updateClients = function(size, conn) {
+	var json = JSON.stringify(gridStates[size])
+	var connections = gridConns[size];
+	console.log(gridStates[size]);
+	for(c in connections) {
+		var connection = connections[c];
+		if (connection !== conn) {
+			connections[c].sendUTF(json);
+		}
+	}
+	for (r in responses[size]) {
+		res = responses[size][r];
+		res.writeHead(200, {
+			"Content-Type": 'text/json'
+		});
+		if (gridStates[size]) {
+			res.write(json);
+			res.end();
+			console.log('responded');
+		}
+		console.log('done');
+	}
+	responses[size] = [];
+};
 
 var server = http.createServer(function(req, res) {
 	var path = url.parse(req.url).pathname;
+	var size = url.parse(req.url).query;
 
 	if (path == '/') {
 		res.writeHead(200, {
 			"Content-Type": 'text/html'
 		});
 		res.write(grid);
-	} else if (path == '/json') {
+		res.end();
+	} else if (path.match(/poll/)) {
+
+		if (req.method === "GET") {
+			console.log('request received');
+			if (responses[size]) {
+				responses[size].push(res);
+			} else {
+				responses[size] = [res];
+			}
+			
+		}
+		
+		
+	} else if (path.match(/json/)) {
 		if (req.method === "POST") {
 			var body = '';
 			req.on('data', function(data) {
 				body += data;
 			});
 			req.on('end', function() {
-				
+					size = url.parse(req.url).query;
+
+					var update = JSON.parse(body);
+					gridStates[update.size] = update.grid;
+					fs.writeFile('gridStates.json', JSON.stringify(gridStates));
+					updateClients(update.size);
+					
 			});
+		} else if (req.method === "GET") {
+			var json = JSON.stringify(gridStates[size])
 			res.writeHead(200, {
 				"Content-Type": 'text/json'
 			});
-			res.write(json);
+			if (gridStates[size]) {
+				res.write(json);
+				res.end();
+			}
+
 		}
 	}
-	res.end();
 }).listen(8800);
 
 var socket = new ws({
 	httpServer: server
 });
 
-var gridConns = {};
+
 
 socket.on('request', function(r) {
 	console.log(r.origin);
@@ -70,12 +123,7 @@ socket.on('request', function(r) {
 		console.log(update);
 		gridStates[update.size] = update.grid;
 		fs.writeFile('gridStates.json', JSON.stringify(gridStates));
-		for(c in connections) {
-			var connection = connections[c];
-			if (connection !== conn) {
-				connections[c].sendUTF(JSON.stringify(update.grid));
-			}
-		} 
+		updateClients(update.size, conn);
 
 	});
 

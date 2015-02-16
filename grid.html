@@ -33,8 +33,10 @@
 	size = parseInt(size);
 	console.log(document.location)
 
-	var socket = new WebSocket('ws://' + document.location.hostname + ':' + document.location.port + '/?' + size, 'update-protocol');
-
+	var socket;
+	if (WebSocket) {
+		var socket = new WebSocket('ws://' + document.location.hostname + ':' + document.location.port + '/?' + size, 'update-protocol');
+	}
 	function Grid(size, el, socket) {
 		var startPos = {
 			x: 0,
@@ -74,8 +76,16 @@
 				size: size,
 				grid: exes
 			});
-			socket.send(json);
-			console.log(json);
+			if (socket) {
+				socket.send(json);
+				console.log(json);
+			} else {
+				var r = new XMLHttpRequest(); 
+				var url = 'http://' + document.location.hostname + ':' + document.location.port + '/json?' + size;
+				r.open("POST", url, true);
+				r.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+				r.send(json);
+			}
 		};
 
 		this.populate = function(data) {
@@ -225,9 +235,32 @@
 		size = parseInt(size);
 		if (size) {
 			var grid = new Grid(size, container, socket);
-			socket.onmessage = function(m) {
-				var data = JSON.parse(m.data);
-				grid.populate(data);
+
+			if (socket) {
+				socket.onmessage = function(m) {
+					var data = JSON.parse(m.data);
+					grid.populate(data);
+				}
+			} else {
+				var poll = function(path) {
+					var r = new XMLHttpRequest(); 
+					var url = 'http://' + document.location.hostname + ':' + document.location.port + '/' + path + '?' + size
+					r.open("GET", url, true);
+					r.onreadystatechange = function () {
+						if (r.readyState != 4 || r.status != 200) return; 
+						console.log(r.responseText);
+						var data = JSON.parse(r.responseText);
+						grid.populate(data);
+						if (path === 'poll') {
+							poll();
+						}
+					};
+					r.send();
+				};
+				poll('json');
+				poll('poll');
+
+				
 			}
 		}
 	})()
