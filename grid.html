@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+
+<style type="text/css">
+.modGrid {
+	border-collapse: collapse;
+	position: relative;
+}
+.gridCell {
+	border: 1px solid black;
+	width: 30px;
+	height: 30px;
+	position: relative;
+}
+
+.x {
+	height: 100%;
+	width: 100%;
+	position: absolute;
+	top: 0;
+	left: 0;
+	cursor: default;
+	text-align: center;
+	padding-top: .5em;
+}
+</style>
+
+<script>
+
+	var size = location.href.match(/(\d+)?$/)[1] || 0;
+	size = parseInt(size);
+	console.log(document.location)
+
+	var socket = new WebSocket('ws://' + document.location.hostname + ':' + document.location.port + '/?' + size, 'update-protocol');
+
+	function Grid(size, el, socket) {
+		var startPos = {
+			x: 0,
+			y: 0
+		};
+		var dragging = false;
+		var xDown = false;
+		var xDrag;
+		var exes = {};
+
+		var grid = document.createElement('table');
+		grid.className = "modGrid";
+		el.appendChild(grid);
+		var rows = '';
+		id = 1;
+		for (var r = 0; r < size; r++) {
+			var cols = '';
+			for (var c = 0; c < size; c++) {
+				cols = cols + "<td id='" + id + "' class='gridCell'></td>";
+				id++;
+			}
+			rows = rows + "<tr>" + cols + "</tr>";
+		}
+		grid.innerHTML = rows;
+
+		var c1 = document.getElementById('1');
+		cWidth = c1.offsetWidth;
+		cHeight = c1.offsetHeight;
+
+		var updateServer = function(id, ex) {
+			exes[id] = ex;
+			var json = JSON.stringify({
+				size: size,
+				grid: exes
+			});
+			socket.send(json);
+			console.log(json);
+		};
+
+		this.populate = function(data) {
+			for (id in data) {
+				var cell = document.getElementById(id);
+				exes[id] = data[id];
+				if (data[id]) {
+					cell.innerHTML = "<div class='x'>x</div>";
+				} else {
+					cell.innerHTML = '';
+				}
+				
+			}
+		}
+
+		var findCell = function(mx, my, el) {
+			var x = Math.floor(mx / cWidth) + 1;
+			var y = Math.floor(my / cHeight) + 1;
+			var id = ((y - 1) * size) + x;
+			if (id > 0 && id <= size * size) {
+				return id;
+			} else {
+				return 0;
+			}
+		};
+
+		var gridClick = function(e) {
+			console.log(e);
+			var el = e.toElement;
+			var id;
+			xDown = false;
+			if (!dragging) {
+				if (el.id.match(/^\d+$/)) {
+					id = parseInt(el.id);
+					el.innerHTML = "<div class='x'>x</div>";
+					updateServer(id, true);
+				} else if (el.className.match(/(\s|^)x(\s|$)/)) {
+					id = parseInt(el.parentElement.id);
+					updateServer(id, false);
+					el.remove();
+				}
+			} else {
+				dragging = false;
+				var id = findCell(e.x - grid.offsetLeft, e.y - grid.offsetTop);
+				var dragID = parseInt(xDrag.parentElement.id);
+				var cell = document.getElementById(id);
+				if (cell && cell.innerHTML === '') {
+					cell.innerHTML = "<div class='x'>x</div>";
+					updateServer(id, true);
+					updateServer(dragID, false);
+					xDrag.remove();
+				} else {
+					xDrag.style.left = '0';
+					xDrag.style.top = '0';
+				}
+			}
+		};
+
+		var gridDrag = function(e) {
+			if (xDown) {
+				dragging = true;
+				e.preventDefault();
+				var x = e.x;
+				var y = e.y;
+				xDrag.style.left = (x - startPos.x) + 'px';
+				xDrag.style.top = (y - startPos.y) + 'px';
+			}
+		};
+
+		grid.addEventListener('click', gridClick, false);
+		grid.addEventListener('mousedown', function(e) {
+			e.preventDefault();
+			console.log(e);
+			startPos.x = e.x;
+			startPos.y = e.y;
+			var el = e.toElement;
+			if (el.className === 'x') {
+				xDown = true;
+				xDrag = el;
+			}
+		});
+		document.addEventListener('mousemove', gridDrag);
+		document.addEventListener('mouseup', function(e) {
+			console.log(e);
+		});
+	}
+</script>
+</head>
+<body>
+
+<table id="modGrid">
+
+</table>
+
+
+<script>
+	(function() {
+		var size = location.href.match(/(\d+)?$/)[1] || 0;
+		var container = document.getElementById('modGrid');
+		size = parseInt(size);
+		if (size) {
+			var grid = new Grid(size, container, socket);
+			socket.onmessage = function(m) {
+				var data = JSON.parse(m.data);
+				grid.populate(data);
+			}
+		}
+	})()
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
