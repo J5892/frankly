@@ -44,6 +44,7 @@
 		var xDown = false;
 		var xDrag;
 		var exes = {};
+		var tap = false;
 
 		var grid = document.createElement('table');
 		grid.className = "modGrid";
@@ -64,8 +65,11 @@
 		cWidth = c1.offsetWidth;
 		cHeight = c1.offsetHeight;
 
-		var updateServer = function(id, ex) {
+		var updateExes = function(id, ex) {
 			exes[id] = ex;
+		}
+
+		var updateServer = function(id, ex) {
 			var json = JSON.stringify({
 				size: size,
 				grid: exes
@@ -98,65 +102,112 @@
 			}
 		};
 
-		var gridClick = function(e) {
-			console.log(e);
-			var el = e.toElement;
-			var id;
-			xDown = false;
-			if (!dragging) {
-				if (el.id.match(/^\d+$/)) {
+		var toggle = function(el) {
+			if (el.id.match(/^\d+$/)) {
 					id = parseInt(el.id);
 					el.innerHTML = "<div class='x'>x</div>";
-					updateServer(id, true);
-				} else if (el.className.match(/(\s|^)x(\s|$)/)) {
-					id = parseInt(el.parentElement.id);
-					updateServer(id, false);
-					el.remove();
+					updateExes(id, true);
+					updateServer();
+			} else if (el.className.match(/(\s|^)x(\s|$)/)) {
+				id = parseInt(el.parentElement.id);
+				updateExes(id, false);
+				updateServer();
+				el.parentNode.removeChild(el);
+			}
+		}
+
+		var gridClick = function(e) {
+			if (!tap) {
+				console.log(e);
+				var el = e.toElement;
+				var id;
+				xDown = false;
+				if (!dragging) {
+					toggle(el);
+				} else {
+					dragEnd(e);
 				}
 			} else {
+				tap = false;
+			}
+		};
+
+		var dragEnd = function(e) {
+			if (dragging) {
+				xDown = false;
 				dragging = false;
-				var id = findCell(e.x - grid.offsetLeft, e.y - grid.offsetTop);
+				var x, y;
+				if (e.type === "touchend") {
+					x = e.changedTouches[0].clientX;
+					y = e.changedTouches[0].clientY;
+				} else {
+					x = e.x;
+					y = e.y;
+				}
+				console.log(e);
+				var id = findCell(x - grid.offsetLeft, y - grid.offsetTop);
 				var dragID = parseInt(xDrag.parentElement.id);
 				var cell = document.getElementById(id);
 				if (cell && cell.innerHTML === '') {
 					cell.innerHTML = "<div class='x'>x</div>";
-					updateServer(id, true);
-					updateServer(dragID, false);
-					xDrag.remove();
+					updateExes(id, true);
+					updateExes(dragID, false);
+					updateServer();
+					xDrag.parentNode.removeChild(xDrag);
 				} else {
 					xDrag.style.left = '0';
 					xDrag.style.top = '0';
 				}
+			} else {
+				tap = true;
+				toggle(e.target);
 			}
+			dragging = false;
 		};
 
 		var gridDrag = function(e) {
-			if (xDown) {
-				dragging = true;
-				e.preventDefault();
+			var x;
+			var y;
+			if (e.type === 'touchmove') {
+				x = e.touches[0].clientX;
+				y = e.touches[0].clientY;
+			} else {
 				var x = e.x;
 				var y = e.y;
-				xDrag.style.left = (x - startPos.x) + 'px';
-				xDrag.style.top = (y - startPos.y) + 'px';
+			}
+			dx = x - startPos.x;
+			dy = y - startPos.y;
+			if (xDown && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+				dragging = true;
+				e.preventDefault();
+				xDrag.style.left = dx + 'px';
+				xDrag.style.top = dy + 'px';
 			}
 		};
 
-		grid.addEventListener('click', gridClick, false);
-		grid.addEventListener('mousedown', function(e) {
-			e.preventDefault();
+		var startDrag = function(e) {
 			console.log(e);
-			startPos.x = e.x;
-			startPos.y = e.y;
-			var el = e.toElement;
+			if (e.type === "touchstart") {
+				startPos.x = e.touches[0].clientX;
+				startPos.y = e.touches[0].clientY;
+			} else {
+				e.preventDefault();
+				startPos.x = e.x;
+				startPos.y = e.y;
+			}
+			var el = e.target;
 			if (el.className === 'x') {
 				xDown = true;
 				xDrag = el;
 			}
-		});
+		}
+
+		grid.addEventListener('click', gridClick, false);
+		grid.addEventListener('mousedown', startDrag);
+		grid.addEventListener('touchstart', startDrag);
 		document.addEventListener('mousemove', gridDrag);
-		document.addEventListener('mouseup', function(e) {
-			console.log(e);
-		});
+		document.addEventListener('touchmove', gridDrag);
+		document.addEventListener('touchend', dragEnd);
 	}
 </script>
 </head>
