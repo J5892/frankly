@@ -40,7 +40,7 @@ var server = http.createServer(function(req, res) {
 	var path = url.parse(req.url).pathname;
 	var size = url.parse(req.url).query;
 
-	if (path == '/') {
+	if (path.match(/\/\d+/)) {
 		res.writeHead(200, {
 			"Content-Type": 'text/html'
 		});
@@ -100,8 +100,8 @@ socket.on('request', function(r) {
 	conns++;
 	var size;
 	var connections;
-	//try {
-		size = r.resourceURL.search.match(/\d+$/)[0];
+	try {
+		size = r.resourceURL.match(/\d+$/)[0];
 		if (gridConns[size]) {
 			gridConns[size].push(conn);
 		} else {
@@ -112,10 +112,10 @@ socket.on('request', function(r) {
 		}
 		
 		connections = gridConns[size];
-	/*}
+	}
 	catch(e) {
 		console.log(e);
-	}*/
+	}
 	console.log("Connection " + conns + " accepted!");
 	conn.on('message', function(m) {
 		var data = m.utf8Data;
