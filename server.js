@@ -33,7 +33,7 @@ var server = http.createServer(function(req, res) {
 		}
 	}
 	res.end();
-}).listen(8000);
+}).listen(8800);
 
 var socket = new ws({
 	httpServer: server
