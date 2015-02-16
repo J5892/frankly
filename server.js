@@ -39,19 +39,14 @@ var updateClients = function(size, conn) {
 var server = http.createServer(function(req, res) {
 	var path = url.parse(req.url).pathname;
 	try {
-		var size = url.match(/\d+$/)[0];
+		var size = path.match(/\d+$/)[0];
+		console.log("s" + size);
 	} catch(e) {
 		var size = 0;
 	}
 
-	if (path.match(/\/\d+/)) {
-		res.writeHead(200, {
-			"Content-Type": 'text/html'
-		});
-		res.write(grid);
-		res.end();
-	} else if (path.match(/poll/)) {
-
+	if (path.match(/poll/)) {
+		console.log('poll');
 		if (req.method === "GET") {
 			console.log('request received');
 			if (responses[size]) {
@@ -61,9 +56,8 @@ var server = http.createServer(function(req, res) {
 			}
 			
 		}
-		
-		
 	} else if (path.match(/json/)) {
+		console.log('json');
 		if (req.method === "POST") {
 			var body = '';
 			req.on('data', function(data) {
@@ -72,6 +66,7 @@ var server = http.createServer(function(req, res) {
 			req.on('end', function() {
 					try {
 						size = url.match(/\d+$/)[0];
+						console.log("s" + size);
 					} catch(e) {
 						size = 0;
 					}
@@ -91,9 +86,16 @@ var server = http.createServer(function(req, res) {
 				res.write(json);
 				res.end();
 			}
-
 		}
+	} else if (path.match(/\/\d+$/)) {
+		console.log('fuck');
+		res.writeHead(200, {
+			"Content-Type": 'text/html'
+		});
+		res.write(grid);
+		res.end();
 	}
+	
 }).listen(8800);
 
 var socket = new ws({
@@ -109,7 +111,9 @@ socket.on('request', function(r) {
 	var size;
 	var connections;
 	try {
-		size = r.resourceURL.match(/\d+$/)[0];
+		console.log(r.resourceURL);
+		size = r.resourceURL.path.match(/\d+$/)[0];
+		
 		if (gridConns[size]) {
 			gridConns[size].push(conn);
 		} else {
